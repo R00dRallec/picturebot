@@ -75,9 +75,10 @@ def get_subreddit_posts(subreddit):
 
 def get_post(posts_json, i):
     """Returns the image of the post at index i of the given json reddit api data"""
-    img = json.loads(posts_json)['data']['children'][i]['data']['url']
-    title = json.loads(posts_json)['data']['children'][i]['data']['title']
-    post_id = json.loads(posts_json)['data']['children'][i]['data']['id']
+    data = json.loads(posts_json)['data']['children'][i]['data']
+    img = data['url']
+    title = data['title']
+    post_id = data['id']
     return img, title, post_id
 
 def does_post_match(title, regex=None):
