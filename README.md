@@ -17,6 +17,7 @@ It has a history of up to ten sent posts per subreddit, to prevent resending the
 # Preparation
 
 Copy `config.sample.json` to `config.json` and edit the parameters to fit your needs.
+For details on how to create a Telegram bot, check the [Telegrom Doc](https://core.telegram.org/bots#6-botfather).
 
 # Usage
 
