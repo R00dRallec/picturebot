@@ -58,7 +58,6 @@ def get_bot(token):
 
 def get_subreddit_posts(subreddit):
     """Returns the latest posts of the given subreddit"""
-
     url = None
 
     try:
@@ -82,7 +81,7 @@ def get_post(posts_json, i):
     return img, title, post_id
 
 def does_post_match(title, regex=None):
-    """Filters the given posts whether their title matches the given regex."""
+    """Checks given post whether its title matches the given regex."""
     pre_compiled = re.compile(regex)
     return bool(pre_compiled.match(title) is not None)
 
@@ -122,7 +121,6 @@ def main(sub_reddit=None, test=False):
                 continue
         # Post passed regex check
         if is_post_in_latest_posts(latest_posts, sub_reddit, post_id):
-            print('Already posted')
             continue
         else:
             print('Checked: ' + str(i) + ' posts.')
@@ -134,9 +132,7 @@ def main(sub_reddit=None, test=False):
         bot.sendPhoto(group_id, img, caption=msg)
         # Appropriate post found
         latest_posts = update_latest_posts(latest_posts, sub_reddit, post_id)
-        print(latest_posts)
         crop_latest_posts(latest_posts)
-        print(latest_posts)
         store_latest_posts(data=latest_posts)
     else:
         bot.sendMessage(group_id, 'Did not find an adequate picture. Tired of searching...')
