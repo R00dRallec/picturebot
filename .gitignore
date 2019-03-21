@@ -102,3 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# pic bot user specific files
+config.json
+posts.pickle
