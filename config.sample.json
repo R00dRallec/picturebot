@@ -1,8 +1,14 @@
+/* Remove comments before using this configuration! */
 {
+	/* The ID of the Telegram chat the bot shall communicate with */
 	"group_id": -1337,
+	/* For testing purposes, a special test chat ID can be specified */
 	"test_group_id": -42,
+	/* The Telegram token to identify the Bot */
 	"bot_token": "TELEGRAM BOT TOKEN STRING",
+	/* The regular expression to filter the title of posts to avoid unwanted content */
 	"filter_regex": ".*([\\(\\[][fF][\\]\\)])",
+	/* The list of subreddits, the Bot shall use for the picture aquisition */
 	"subreddits":
 	[
 		"subreddit1",
