@@ -102,7 +102,7 @@ def main(sub_reddit=None, test=False):
     # Get Bot
     bot = get_bot(token)
 
-    # Get random subreddit from list
+    # If no subreddit is predefined --> get random subreddit from list
     if sub_reddit is None:
         sub_reddit = random.choice(subreddits)
 
@@ -130,7 +130,8 @@ def main(sub_reddit=None, test=False):
         # Create the message
         msg = sub_reddit + ': ' + title
         bot.sendPhoto(group_id, img, caption=msg)
-        # Appropriate post found
+
+        # Update already sent posts
         latest_posts = update_latest_posts(latest_posts, sub_reddit, post_id)
         crop_latest_posts(latest_posts)
         store_latest_posts(data=latest_posts)
