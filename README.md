@@ -8,6 +8,22 @@ Based on its configuration, it can randomly select a subreddit from a given list
 
 It has a history of up to ten sent posts per subreddit, to prevent resending the same picture.
 
+# Installation
+
+- Clone repository
+- Install telepot:
+`pip install telepot`
+
+# Preparation
+
+Copy `config.sample.json` to `config.json` and edit the parameters to fit your needs.
+
+# Usage
+
+Execute the script: `python3 pic_bot.py`
+
+___
+
 # Thanks
-Thanks to the authors of 'telepot' for providing such a great and easy to use lib.
-https://telepot.readthedocs.io/en/latest/
+Thanks to the authors of [telepot](https://telepot.readthedocs.io/en/latest/) for providing such a great and easy to use lib.
+
