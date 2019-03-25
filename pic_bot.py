@@ -31,8 +31,9 @@ def get_latest_posts(filename='posts.pickle'):
     except FileNotFoundError:
         return {}
 
-def update_latest_posts(latest_posts, subreddit, post_id):
+def update_latest_posts(subreddit, post_id):
     """Updates the given dictionary with the key subreddit and the value post_id."""
+    latest_posts = get_latest_posts()
     if subreddit in latest_posts:
         latest_posts[subreddit].append(post_id)
     else:
@@ -72,8 +73,9 @@ def get_subreddit_posts(subreddit):
         print(err)
     return url
 
-def get_post(posts_json, i):
+def _get_post_at_position(posts_json, i):
     """Returns the post and its media type at index i of the given json reddit api data"""
+    post = {}
     data = json.loads(posts_json)['data']['children'][i]['data']
     is_video = 'reddit_video_preview' in data['preview']
     media_url = None
@@ -86,12 +88,52 @@ def get_post(posts_json, i):
     title = data['title']
     post_id = data['id']
 
-    return media_url, title, post_id, is_video
+    if title is not None and media_url is not None and post_id is not None:
+        post['title'] = title
+        post['media_url'] = media_url
+        post['post_id'] = post_id
+        post['is_video'] = is_video
+    else:
+        post = None
+
+    return post
+
+def get_post(posts_json, sub_reddit, filter_regex, max_retries=10):
+    """Get the latest not yet sent reddit post, applying a regex filter for gonewild."""
+    latest_posts = get_latest_posts()
+
+    post = None
+    for i in range(max_retries):
+        post = _get_post_at_position(posts_json, i)
+
+        if post is None:
+            break
+        post['sub_reddit'] = sub_reddit
+
+        if post['sub_reddit'] == 'gonewild':
+            if not does_post_match(post['title'], filter_regex):
+                continue
+        # Post passed regex check
+        if is_post_in_latest_posts(latest_posts, post['sub_reddit'], post['post_id']):
+            continue
+        else:
+            print('Checked: ' + str(i) + ' posts.')
+            break
+
+    return post
 
 def does_post_match(title, regex=None):
     """Checks given post whether its title matches the given regex."""
     pre_compiled = re.compile(regex)
     return bool(pre_compiled.match(title) is not None)
+
+def send_message(bot, group_id, post):
+    """Sends a message to the given group."""
+    msg = post['sub_reddit'] + ': ' + post['title']
+    if post['is_video']:
+        bot.sendVideo(group_id, post['media_url'], caption=msg)
+    else:
+        bot.sendPhoto(group_id, post['media_url'], caption=msg)
 
 def main(sub_reddit=None, test=False):
     """Main function"""
@@ -105,8 +147,6 @@ def main(sub_reddit=None, test=False):
     regex = config['filter_regex']
     subreddits = config['subreddits']
 
-    latest_posts = get_latest_posts()
-
     # Get Bot
     bot = get_bot(token)
 
@@ -117,35 +157,14 @@ def main(sub_reddit=None, test=False):
     # get newest posts from sub reddit
     newest_posts = get_subreddit_posts(sub_reddit)
 
-    # Get latest reddit post, filter gonewild
-    media_url = None
-    title = None
-    post_id = None
-    is_video = None
+    post = get_post(newest_posts, sub_reddit, regex)
 
-    for i in range(10):
-        media_url, title, post_id, is_video = get_post(newest_posts, i)
-        if sub_reddit == 'gonewild':
-            if not does_post_match(title, regex):
-                continue
-        # Post passed regex check
-        if is_post_in_latest_posts(latest_posts, sub_reddit, post_id):
-            continue
-        else:
-            print('Checked: ' + str(i) + ' posts.')
-            break
-
-    if media_url is not None and title is not None and post_id is not None and is_video is not None:
-        # Create the message
-        msg = sub_reddit + ': ' + title
-
-        if is_video:
-            bot.sendVideo(group_id, media_url, caption=msg)
-        else:
-            bot.sendPhoto(group_id, media_url, caption=msg)
+    if post is not None:
+        # Send the message
+        send_message(bot, group_id, post)
 
         # Update already sent posts
-        latest_posts = update_latest_posts(latest_posts, sub_reddit, post_id)
+        latest_posts = update_latest_posts(post['sub_reddit'], post['post_id'])
         crop_latest_posts(latest_posts)
         store_latest_posts(data=latest_posts)
     else:
