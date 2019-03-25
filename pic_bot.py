@@ -73,12 +73,20 @@ def get_subreddit_posts(subreddit):
     return url
 
 def get_post(posts_json, i):
-    """Returns the image of the post at index i of the given json reddit api data"""
+    """Returns the post and its media type at index i of the given json reddit api data"""
     data = json.loads(posts_json)['data']['children'][i]['data']
-    img = data['url']
+    is_video = 'reddit_video_preview' in data['preview']
+    media_url = None
+
+    if is_video:
+        media_url = data['preview']['reddit_video_preview']['fallback_url']
+    else:
+        media_url = data['url']
+
     title = data['title']
     post_id = data['id']
-    return img, title, post_id
+
+    return media_url, title, post_id, is_video
 
 def does_post_match(title, regex=None):
     """Checks given post whether its title matches the given regex."""
@@ -110,12 +118,13 @@ def main(sub_reddit=None, test=False):
     newest_posts = get_subreddit_posts(sub_reddit)
 
     # Get latest reddit post, filter gonewild
-    img = None
+    media_url = None
     title = None
     post_id = None
+    is_video = None
 
     for i in range(10):
-        img, title, post_id = get_post(newest_posts, i)
+        media_url, title, post_id, is_video = get_post(newest_posts, i)
         if sub_reddit == 'gonewild':
             if not does_post_match(title, regex):
                 continue
@@ -126,17 +135,21 @@ def main(sub_reddit=None, test=False):
             print('Checked: ' + str(i) + ' posts.')
             break
 
-    if img is not None and title is not None and id is not None:
+    if media_url is not None and title is not None and post_id is not None and is_video is not None:
         # Create the message
         msg = sub_reddit + ': ' + title
-        bot.sendPhoto(group_id, img, caption=msg)
+
+        if is_video:
+            bot.sendVideo(group_id, media_url, caption=msg)
+        else:
+            bot.sendPhoto(group_id, media_url, caption=msg)
 
         # Update already sent posts
         latest_posts = update_latest_posts(latest_posts, sub_reddit, post_id)
         crop_latest_posts(latest_posts)
         store_latest_posts(data=latest_posts)
     else:
-        bot.sendMessage(group_id, 'Did not find an adequate picture. Tired of searching...')
+        bot.sendMessage(group_id, 'Did not find an adequate post. Tired of searching...')
 
 
 if __name__ == '__main__':
