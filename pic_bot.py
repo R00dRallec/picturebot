@@ -251,9 +251,9 @@ def main(sub_reddit=None, test=False):
         sub_reddit = random.choice(cfg.get_subreddits())
 
     if test:
-        chat_id = cfg.get_chat_id()
-    else:
         chat_id = cfg.get_test_chat_id()
+    else:
+        chat_id = cfg.get_chat_id()
 
     crawler = RedditCrawler()
 
