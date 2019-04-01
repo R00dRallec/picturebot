@@ -141,8 +141,8 @@ class RedditCrawler:
 
             post['sub_reddit'] = sub_reddit
 
-            if post['sub_reddit'] == 'gonewild':
-                if not self.does_post_match(post['title'], filter_regex):
+            if post['sub_reddit'] in filter_regex:
+                if not self.does_post_match(post['title'], filter_regex[post['sub_reddit']]):
                     continue
             # Post passed regex check
             if RedditCrawler.is_post_in_latest_posts(latest_posts,
