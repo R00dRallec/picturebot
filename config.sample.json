@@ -8,6 +8,8 @@
 	"bot_token": "TELEGRAM BOT TOKEN STRING",
 	/* The regular expression to filter the title of posts to avoid unwanted content */
 	"filter_regex": ".*([\\(\\[][fF][\\]\\)])",
+	/* Te prefix of messages that the bot listens to */
+	"activation_prefix": "/picbot",
 	/* The list of subreddits, the Bot shall use for the picture aquisition */
 	"subreddits":
 	[
