@@ -6,8 +6,12 @@
 	"test_group_id": -42,
 	/* The Telegram token to identify the Bot */
 	"bot_token": "TELEGRAM BOT TOKEN STRING",
-	/* The regular expression to filter the title of posts to avoid unwanted content */
-	"filter_regex": ".*([\\(\\[][fF][\\]\\)])",
+	/* The regular expressions to filter the title of a post to avoid unwanted content. */
+	/* Filter configurable per subreddit */
+	"filter_regex":
+	{
+		"subreddit": ".*"
+	},
 	/* Te prefix of messages that the bot listens to */
 	"activation_prefix": "/picbot",
 	/* The list of subreddits, the Bot shall use for the picture aquisition */
