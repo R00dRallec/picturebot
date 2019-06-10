@@ -405,7 +405,7 @@ def main():
                 # 7 to 17 o'clock
                 if 7 <= time_now.hour <= 17:
                     # each full hour
-                    if time_now.minute == 5 and executed_hour != time_now.hour:
+                    if time_now.minute == 0 and executed_hour != time_now.hour:
                         executed_hour = time_now.hour
                         picbot.send_picture(args.subreddit, args.test)
 
