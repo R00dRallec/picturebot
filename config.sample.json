@@ -12,6 +12,8 @@
 	{
 		"subreddit": ".*"
 	},
+	/* Te prefix of messages that the bot listens to */
+	"activation_prefix": "/picbot",
 	/* The list of subreddits, the Bot shall use for the picture aquisition */
 	"subreddits":
 	[

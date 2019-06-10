@@ -1,11 +1,13 @@
 """Grabs the latest, not yet sent post from a subreddit and sends it to the given telegram group."""
 
 import argparse
+from datetime import datetime
 import json
 import logging
 import pickle
 import random
 import re
+import time
 import urllib.request
 
 import telepot
@@ -193,8 +195,10 @@ class RedditCrawler:
 
 class TelegramBot:  # pylint: disable=too-few-public-methods
     """Telegram Bot instance."""
+
     def __init__(self, token):
         self.bot = telepot.Bot(token)
+        self.logger = Logger.get_instance()
 
     def send_message(self, chat_id, msg, media=None, is_video=False):
         """Sends a message to the given group."""
@@ -205,9 +209,27 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
         else:
             self.bot.sendPhoto(chat_id, media, caption=msg)
 
+    def get_updates(self, update_id=None):
+        """Returns all updates for the bot since the last update."""
+        updates = []
+        if update_id != {}:
+            self.logger.info('Last update ID %d', update_id)
+            updates = self.bot.getUpdates(update_id)
+        else:
+            self.logger.info('No update ID found, retrieving all updates')
+            updates = self.bot.getUpdates()
+
+        return updates
+
+    def is_admin(self, chat_id, user_id):
+        """Checks if the user is admin of the specific group."""
+        status = self.bot.getChatMember(chat_id, user_id)['status']
+        return status in['creator', 'administrator']
+
 
 class Configuration:
     """Configuration for the picturebot."""
+
     def __init__(self, config_file='config.json'):
         self.cfg = {}
         self.cfg = Configuration.get_config(config_file)
@@ -216,13 +238,9 @@ class Configuration:
         """Returns the subreddits from the config file."""
         return self.cfg.get('subreddits', [])
 
-    def get_chat_id(self):
+    def get_chat_id(self, test=False):
         """Returns the chat id from the config file."""
-        return self.cfg.get('group_id', 0)
-
-    def get_test_chat_id(self):
-        """Returns the test chat id from the config file."""
-        return self.cfg.get('test_group_id', 0)
+        return self.cfg.get('test_group_id', 0) if test else self.cfg.get('group_id', 0)
 
     def get_filter_regex(self):
         """Returns the filtering regex from the config file."""
@@ -232,6 +250,10 @@ class Configuration:
         """Returns the Telegram bot token from the config file."""
         return self.cfg.get('bot_token', '')
 
+    def get_activation_prefix(self):
+        """Returns the activation prefix from the config file."""
+        return  self.cfg.get('activation_prefix', '/picbot')
+
     @staticmethod
     def get_config(filename='config.json'):
         """Reads a json config, identified by filename."""
@@ -240,39 +262,153 @@ class Configuration:
             return data
 
 
-def main(sub_reddit=None, test=False):
+class Picturebot:
+    """"Provides functionality to send pictures to telegram groups"""
+
+    def __init__(self, config_file='config.json'):
+        # Setup configuration
+        self._cfg = Configuration(config_file)
+        # Setup crawler to retrieve reddit posts
+        self._crawler = RedditCrawler()
+        # Setup bot to post to telegram
+        self._telegram_bot = TelegramBot(self._cfg.get_bot_token())
+        # Setup logger
+        self._logger = Logger.get_instance()
+        # Setup NvM Handler
+        self._nvm_handler = NvMHandler()
+        # Setup command dictionary
+        self._commands = \
+            [
+                {'command_string': 'MakeMeHappy',
+                 'command_function': self._make_me_happy,
+                 'command_requires_admin': False}
+            ]
+
+    def send_picture(self, sub_reddit=None, test=False):
+        """
+        Pics a picture from the given subreddit and sends it to the telegram group.
+        If no subreddit it given, a random one from the config is selected.
+
+        Keyword arguments:
+        sub_reddit -- the subreddit if it shall be set fix (default None)
+        test -- flag indicating if the message shall be sent to the testgroup
+        """
+        # if no subreddit is predefined --> get random subreddit from list
+        if sub_reddit is None:
+            sub_reddit = random.choice(self._cfg.get_subreddits())
+
+        # select group id the message is sent to based on test flag
+        chat_id = self._cfg.get_chat_id(test)
+
+        # get images from selected subreddit
+        reddit_data = self._crawler.get_subreddit_posts_from_api(sub_reddit)
+
+        # select image and construct post
+        post = self._crawler.get_post(reddit_data, sub_reddit, self._cfg.get_filter_regex())
+
+        if post:
+            # if an appropriate post was found then send it
+            msg = post['sub_reddit'] + ': ' + post['title']
+            self._telegram_bot.send_message(chat_id, msg, media=post['media_url'], is_video=post['is_video'])
+        else:
+            # if no appropriate post was found then send information
+            self._telegram_bot.send_message(chat_id, 'Did not find an adequate post. Tired of searching...')
+
+    def process_commands(self, test=False):
+        """
+        Checks if commands were received and processes them
+
+        Keyword arguments:
+        test -- flag indicating if the function shall operate
+                on the testgroup
+        """
+        # load last update id from NvM
+        last_update_id = self._nvm_handler.load('update_id.pickle')
+
+        # get updates after the loaded update id
+        updates = self._telegram_bot.get_updates(last_update_id)
+
+        # if there are updates store the latest update id
+        if len(updates) > 1:
+            # discard the first update as it is the one with the provided update id
+            updates = updates[1:]
+            self._nvm_handler.store(updates[-1]['update_id'], 'update_id.pickle')
+        else:
+            self._logger.info('No new messages in chat')
+            return
+
+        chat_id = self._cfg.get_chat_id(test)
+
+        # process all updates
+        for update in updates:
+            # check if message was sent in configured group
+            if update['message']['chat']['type'] == 'group' and update['message']['chat']['id'] == chat_id:
+                # check if message was for bot
+                if update['message']['text'].startswith(self._cfg.get_activation_prefix()):
+                    # check if command is implemented
+                    command_split = update['message']['text'].split(' ')
+                    command_name = command_split[1]
+                    command_param = None
+                    if len(command_split) == 3:
+                        command_param = update['message']['text'].split(' ')[2]
+                    command = next((command for command in self._commands
+                                    if command['command_string'].lower() == command_name.lower()), None)
+                    if command:
+                        # check if admin privileges are needed
+                        command_permissions = False
+                        if command['command_requires_admin'] is True:
+                            # check if sender is admin
+                            command_permissions = self._telegram_bot.is_admin(
+                                update['message']['chat']['id'],
+                                update['message']['from']['id'])
+                        else:
+                            command_permissions = True
+
+                        # check if command permissions are valid
+                        if command_permissions:
+                            self._logger.info('Received valid command %s', command_name)
+                            command['command_function'](command_param, test)
+                        else:
+                            first_name = update['message']['from']['first_name']
+                            last_name = update['message']['from']['last_name']
+                            self._logger.info('User %s %s requested command %s without permission',
+                                              first_name, last_name, command_name)
+                    else:
+                        # command not in list
+                        self._logger.info("Unrecognized command %s", command_name)
+
+    def _make_me_happy(self, subreddit, test):
+        self.send_picture(subreddit, test)
+
+def main():
     """Main function"""
 
-    # Setup configuration
-    cfg = Configuration()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--subreddit")
+    parser.add_argument("--test", action="store_true")
+    parser.add_argument("--send", action="store_true")
+    parser.add_argument("--process_commands", action="store_true")
+    parser.add_argument("--loop", action="store_true")
+    args = parser.parse_args()
 
-    # If no subreddit is predefined --> get random subreddit from list
-    if sub_reddit is None:
-        sub_reddit = random.choice(cfg.get_subreddits())
+    picbot = Picturebot()
 
-    if test:
-        chat_id = cfg.get_test_chat_id()
-    else:
-        chat_id = cfg.get_chat_id()
-
-    crawler = RedditCrawler()
-
-    reddit_data = crawler.get_subreddit_posts_from_api(sub_reddit)
-
-    post = crawler.get_post(reddit_data, sub_reddit, cfg.get_filter_regex())
-
-    bot = TelegramBot(cfg.get_bot_token())
-
-    if post:
-        msg = post['sub_reddit'] + ': ' + post['title']
-        bot.send_message(chat_id, msg, media=post['media_url'], is_video=post['is_video'])
-    else:
-        bot.send_message(chat_id, 'Did not find an adequate post. Tired of searching...')
+    if args.loop:
+        executed_hour = 0
+        while 1:
+            picbot.process_commands(args.test)
+            time.sleep(1)
+            #check if regular send shall take place
+            time_now = datetime.now()
+            # Mon - Fri
+            if 0 <= time_now.weekday() <= 4:
+                # 7 to 17 o'clock
+                if 7 <= time_now.hour <= 17:
+                    # each full hour
+                    if time_now.minute == 5 and executed_hour != time_now.hour:
+                        executed_hour = time_now.hour
+                        picbot.send_picture(args.subreddit, args.test)
 
 
 if __name__ == '__main__':
-    PARSER = argparse.ArgumentParser()
-    PARSER.add_argument("--subreddit")
-    PARSER.add_argument("--test", action="store_true")
-    ARGS = PARSER.parse_args()
-    main(ARGS.subreddit, ARGS.test)
+    main()

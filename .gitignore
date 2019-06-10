@@ -105,4 +105,4 @@ venv.bak/
 
 # pic bot user specific files
 config.json
-posts.pickle
+*.pickle
