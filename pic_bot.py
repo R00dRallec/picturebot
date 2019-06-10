@@ -397,24 +397,30 @@ def main():
 
     picbot = Picturebot()
 
+    triggers = picbot._cfg.get_triggers()
+    if triggers is None:
+        print('No triggers configured. Exiting')
+        exit(-1)
+
     if args.loop:
         executed_hour = 0
         while 1:
             picbot.process_commands(args.test)
-            time.sleep(1)
-            if picbot._cfg.get_triggers() is not None:
+            time.sleep(5)
+            for trigger in triggers:
                 #check if regular send shall take place
                 time_now = datetime.now()
                 # Mon - Fri
-                if time_now.weekday() in picbot._cfg.get_triggers()['days']:
+                if time_now.weekday() in trigger['days']:
                     # 7 to 17 o'clock
-                    if time_now.hour in picbot._cfg.get_triggers()['hours']:
+                    if time_now.hour in trigger['hours']:
                         # each full hour
-                        if time_now.minute in picbot._cfg.get_triggers()['minutes'] and executed_hour != time_now.hour:
+                        if time_now.minute in trigger['minutes'] and executed_hour != time_now.hour:
                             executed_hour = time_now.hour
-                            picbot.send_picture(args.subreddit, args.test)
-            else:
-                print('No triggers configured.')
+                            subreddit = args.subreddit
+                            if trigger.get("subreddit", None) is not None:
+                                subreddit = trigger['subreddit']
+                            picbot.send_picture(subreddit, args.test)
 
 
 if __name__ == '__main__':
