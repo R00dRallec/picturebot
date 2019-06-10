@@ -1,11 +1,13 @@
 """Grabs the latest, not yet sent post from a subreddit and sends it to the given telegram group."""
 
 import argparse
+from datetime import datetime
 import json
 import logging
 import pickle
 import random
 import re
+import time
 import urllib.request
 
 import telepot
@@ -208,6 +210,7 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
             self.bot.sendPhoto(chat_id, media, caption=msg)
 
     def get_updates(self, update_id=None):
+        """Returns all updates for the bot since the last update."""
         updates = []
         if update_id != {}:
             self.logger.info('Last update ID %d', update_id)
@@ -219,8 +222,9 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
         return updates
 
     def is_admin(self, chat_id, user_id):
+        """Checks if the user is admin of the specific group."""
         status = self.bot.getChatMember(chat_id, user_id)['status']
-        return status == 'creator' or status == 'administrator'
+        return status in['creator', 'administrator']
 
 
 class Configuration:
@@ -338,11 +342,15 @@ class Picturebot:
         # process all updates
         for update in updates:
             # check if message was sent in configured group
-            if update['message']['chat']['type'] == 'group' and update['message']['chat']['id'] ==  chat_id:
+            if update['message']['chat']['type'] == 'group' and update['message']['chat']['id'] == chat_id:
                 # check if message was for bot
                 if update['message']['text'].startswith(self._cfg.get_activation_prefix()):
                     # check if command is implemented
-                    command_name = update['message']['text'].split(' ')[1]
+                    command_split = update['message']['text'].split(' ')
+                    command_name = command_split[1]
+                    command_param = None
+                    if len(command_split) == 3:
+                        command_param = update['message']['text'].split(' ')[2]
                     command = next((command for command in self._commands
                                     if command['command_string'].lower() == command_name.lower()), None)
                     if command:
@@ -359,7 +367,7 @@ class Picturebot:
                         # check if command permissions are valid
                         if command_permissions:
                             self._logger.info('Received valid command %s', command_name)
-                            command['command_function']()
+                            command['command_function'](command_param, test)
                         else:
                             first_name = update['message']['from']['first_name']
                             last_name = update['message']['from']['last_name']
@@ -369,9 +377,8 @@ class Picturebot:
                         # command not in list
                         self._logger.info("Unrecognized command %s", command_name)
 
-    def _make_me_happy(self):
-        self.send_picture()
-
+    def _make_me_happy(self, subreddit, test):
+        self.send_picture(subreddit, test)
 
 def main():
     """Main function"""
@@ -381,15 +388,26 @@ def main():
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--send", action="store_true")
     parser.add_argument("--process_commands", action="store_true")
+    parser.add_argument("--loop", action="store_true")
     args = parser.parse_args()
 
     picbot = Picturebot()
 
-    if args.send:
-        picbot.send_picture(args.subreddit, args.test)
-
-    if args.process_commands:
-        picbot.process_commands(args.test)
+    if args.loop:
+        executed_hour = 0
+        while 1:
+            picbot.process_commands(args.test)
+            time.sleep(1)
+            #check if regular send shall take place
+            time_now = datetime.now()
+            # Mon - Fri
+            if 0 <= time_now.weekday() <= 4:
+                # 7 to 17 o'clock
+                if 7 <= time_now.hour <= 17:
+                    # each full hour
+                    if time_now.minute == 5 and executed_hour != time_now.hour:
+                        executed_hour = time_now.hour
+                        picbot.send_picture(args.subreddit, args.test)
 
 
 if __name__ == '__main__':
