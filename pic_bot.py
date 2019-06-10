@@ -252,7 +252,11 @@ class Configuration:
 
     def get_activation_prefix(self):
         """Returns the activation prefix from the config file."""
-        return  self.cfg.get('activation_prefix', '/picbot')
+        return self.cfg.get('activation_prefix', '/picbot')
+
+    def get_triggers(self):
+        """Returns the trigger times from the config file."""
+        return self.cfg.get('triggers', None)
 
     @staticmethod
     def get_config(filename='config.json'):
@@ -398,16 +402,19 @@ def main():
         while 1:
             picbot.process_commands(args.test)
             time.sleep(1)
-            #check if regular send shall take place
-            time_now = datetime.now()
-            # Mon - Fri
-            if 0 <= time_now.weekday() <= 4:
-                # 7 to 17 o'clock
-                if 7 <= time_now.hour <= 17:
-                    # each full hour
-                    if time_now.minute == 0 and executed_hour != time_now.hour:
-                        executed_hour = time_now.hour
-                        picbot.send_picture(args.subreddit, args.test)
+            if picbot._cfg.get_triggers() is not None:
+                #check if regular send shall take place
+                time_now = datetime.now()
+                # Mon - Fri
+                if time_now.weekday() in picbot._cfg.get_triggers()['days']:
+                    # 7 to 17 o'clock
+                    if time_now.hour in picbot._cfg.get_triggers()['hours']:
+                        # each full hour
+                        if time_now.minute in picbot._cfg.get_triggers()['minutes'] and executed_hour != time_now.hour:
+                            executed_hour = time_now.hour
+                            picbot.send_picture(args.subreddit, args.test)
+            else:
+                print('No triggers configured.')
 
 
 if __name__ == '__main__':
