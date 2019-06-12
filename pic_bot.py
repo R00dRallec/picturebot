@@ -141,47 +141,51 @@ class RedditCrawler:
         for i in range(max_retries):
             post = self._get_post_at_position(posts, i)
 
-            post['sub_reddit'] = sub_reddit
+            if post: # not an empty dict
+                post['sub_reddit'] = sub_reddit
 
-            if post['sub_reddit'] in filter_regex:
-                if not self.does_post_match(post['title'], filter_regex[post['sub_reddit']]):
+                if post['sub_reddit'] in filter_regex:
+                    if not self.does_post_match(post['title'], filter_regex[post['sub_reddit']]):
+                        continue
+                # Post passed regex check
+                if RedditCrawler.is_post_in_latest_posts(latest_posts,
+                                                         post['sub_reddit'],
+                                                         post['post_id']):
                     continue
-            # Post passed regex check
-            if RedditCrawler.is_post_in_latest_posts(latest_posts,
-                                                     post['sub_reddit'],
-                                                     post['post_id']):
-                continue
-            else:
-                self.logger.info('Checked: ' + str(i+1) + ' posts.')
-                break
+                else:
+                    self.logger.info('Checked: ' + str(i+1) + ' posts.')
+                    break
 
-        latest_posts = self.nvm.update(latest_posts, post['sub_reddit'], post['post_id'])
-        self.nvm.store(latest_posts)
+        if post: # not an empty dict
+            latest_posts = self.nvm.update(latest_posts, post['sub_reddit'], post['post_id'])
+            self.nvm.store(latest_posts)
 
         return post
 
     def _get_post_at_position(self, posts, i):
         """Returns the post and its media type at index i of the given json reddit api data"""
         post = {}
-        try:
-            data = posts['data']['children'][i]['data']
-            is_video = 'reddit_video_preview' in data['preview']
 
-            if is_video:
-                media_url = data['preview']['reddit_video_preview']['fallback_url']
-            else:
-                media_url = data['url']
+        if posts is not None:
+            try:
+                data = posts['data']['children'][i]['data']
+                is_video = 'reddit_video_preview' in data['preview']
 
-            title = data['title']
-            post_id = data['id']
+                if is_video:
+                    media_url = data['preview']['reddit_video_preview']['fallback_url']
+                else:
+                    media_url = data['url']
 
-            if title is not None and media_url is not None and post_id is not None:
-                post['title'] = title
-                post['media_url'] = media_url
-                post['post_id'] = post_id
-                post['is_video'] = is_video
-        except KeyError as err:
-            self.logger.debug('Error accessing key: %s', err)
+                title = data['title']
+                post_id = data['id']
+
+                if title is not None and media_url is not None and post_id is not None:
+                    post['title'] = title
+                    post['media_url'] = media_url
+                    post['post_id'] = post_id
+                    post['is_video'] = is_video
+            except KeyError as err:
+                self.logger.debug('Error accessing key: %s', err)
 
         return post
 
