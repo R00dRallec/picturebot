@@ -346,7 +346,7 @@ class Picturebot:
         # process all updates
         for update in updates:
             # check if message was sent in configured group
-            if update['message']['chat']['type'] == 'group' and update['message']['chat']['id'] == chat_id:
+            if update['message']['chat']['type'] in ['supergroup', 'group'] and update['message']['chat']['id'] == chat_id:
                 # check if message was for bot
                 if update['message']['text'].startswith(self._cfg.get_activation_prefix()):
                     # check if command is implemented
