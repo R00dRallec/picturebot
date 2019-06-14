@@ -138,6 +138,10 @@ class RedditCrawler:
         latest_posts = self.nvm.load()
 
         post = None
+
+        # only iterate over max available entries from subreddit
+        max_retries = min(len(posts['data']['children']), max_retries)
+        self.logger.info('Max retries limited to \'%s\'.', max_retries)
         for i in range(max_retries):
             post = self._get_post_at_position(posts, i)
 
