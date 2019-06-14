@@ -143,6 +143,7 @@ class RedditCrawler:
         max_retries = min(len(posts['data']['children']), max_retries)
         self.logger.info('Max retries limited to \'%s\'.', max_retries)
         for i in range(max_retries):
+            self.logger.info('Checking post \'%s\' of \'%s\'.', (i + 1), max_retries)
             post = self._get_post_at_position(posts, i)
 
             if post: # not an empty dict
@@ -159,6 +160,8 @@ class RedditCrawler:
                 else:
                     self.logger.info('Checked: ' + str(i+1) + ' posts.')
                     break
+            else:
+                self.logger.info('Recieved empty post for entry \'%s\'.', (i + 1))
 
         if post: # not an empty dict
             latest_posts = self.nvm.update(latest_posts, post['sub_reddit'], post['post_id'])
@@ -173,7 +176,12 @@ class RedditCrawler:
         if posts is not None:
             try:
                 data = posts['data']['children'][i]['data']
-                is_video = 'reddit_video_preview' in data['preview']
+                if 'preview' in data:
+                    is_video = 'reddit_video_preview' in data['preview']
+                else:
+                    # No media
+                    self.logger.info('No parsable media found in post.')
+                    return {}
 
                 if is_video:
                     media_url = data['preview']['reddit_video_preview']['fallback_url']
@@ -190,6 +198,8 @@ class RedditCrawler:
                     post['is_video'] = is_video
             except KeyError as err:
                 self.logger.debug('Error accessing key: %s', err)
+        else:
+            self.logger.info('Posts are invalid.')
 
         return post
 
@@ -405,7 +415,7 @@ def main():
 
     picbot = Picturebot()
 
-    triggers = picbot._cfg.get_triggers()
+    triggers = Configuration().get_triggers()
     if triggers is None:
         print('No triggers configured. Exiting')
         exit(-1)
