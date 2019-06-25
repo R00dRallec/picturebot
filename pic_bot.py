@@ -421,20 +421,20 @@ def main():
         exit(-1)
 
     if args.loop:
-        executed_hour = 0
+        trigger_executed = [42 for x in triggers]
         while 1:
             picbot.process_commands(args.test)
-            time.sleep(5)
-            for trigger in triggers:
+            time.sleep(1)
+            for idx, trigger in enumerate(triggers):
                 #check if regular send shall take place
                 time_now = datetime.now()
-                # Mon - Fri
+                # configured days
                 if time_now.weekday() in trigger['days']:
-                    # 7 to 17 o'clock
+                    # configured hours
                     if time_now.hour in trigger['hours']:
-                        # each full hour
-                        if time_now.minute in trigger['minutes'] and executed_hour != time_now.hour:
-                            executed_hour = time_now.hour
+                        # configured minutes
+                        if time_now.minute in trigger['minutes'] and trigger_executed[idx] != time_now.hour:
+                            trigger_executed[idx] = time_now.hour
                             subreddit = args.subreddit
                             if trigger.get("subreddit", None) is not None:
                                 subreddit = trigger['subreddit']
