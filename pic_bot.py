@@ -433,12 +433,16 @@ def main():
                     # configured hours
                     if time_now.hour in trigger['hours']:
                         # configured minutes
-                        if time_now.minute in trigger['minutes'] and trigger_executed[idx] != time_now.hour:
-                            trigger_executed[idx] = time_now.hour
-                            subreddit = args.subreddit
-                            if trigger.get("subreddit", None) is not None:
-                                subreddit = trigger['subreddit']
-                            picbot.send_picture(subreddit, args.test)
+                        if time_now.minute in trigger['minutes']:
+                            if trigger_executed[idx] != time_now.hour:
+                                trigger_executed[idx] = time_now.hour
+                                subreddit = args.subreddit
+                                if trigger.get("subreddit", None) is not None:
+                                    subreddit = trigger['subreddit']
+                                picbot.send_picture(subreddit, args.test)
+                        else:
+                            # reset trigger
+                            trigger_executed[idx] = 42
 
 
 if __name__ == '__main__':
