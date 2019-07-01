@@ -140,8 +140,12 @@ class RedditCrawler:
         post = None
 
         # only iterate over max available entries from subreddit
-        max_retries = min(len(posts['data']['children']), max_retries)
-        self.logger.info('Max retries limited to \'%s\'.', max_retries)
+        if 'data' in posts and 'children' in posts['data']:
+            max_retries = min(len(posts['data']['children']), max_retries)
+            self.logger.info('Max retries limited to \'%s\'.', max_retries)
+        else:
+            max_retries = 0
+
         for i in range(max_retries):
             self.logger.info('Checking post \'%s\' of \'%s\'.', (i + 1), max_retries)
             post = self._get_post_at_position(posts, i)
@@ -325,16 +329,21 @@ class Picturebot:
         # get images from selected subreddit
         reddit_data = self._crawler.get_subreddit_posts_from_api(sub_reddit)
 
-        # select image and construct post
-        post = self._crawler.get_post(reddit_data, sub_reddit, self._cfg.get_filter_regex())
+        # check received reddit_data
+        if reddit_data is not None:
+            # select image and construct post
+            post = self._crawler.get_post(reddit_data, sub_reddit, self._cfg.get_filter_regex())
 
-        if post:
-            # if an appropriate post was found then send it
-            msg = post['sub_reddit'] + ': ' + post['title']
-            self._telegram_bot.send_message(chat_id, msg, media=post['media_url'], is_video=post['is_video'])
+            if post:
+                # if an appropriate post was found then send it
+                msg = post['sub_reddit'] + ': ' + post['title']
+                self._telegram_bot.send_message(chat_id, msg, media=post['media_url'], is_video=post['is_video'])
+            else:
+                # if no appropriate post was found then send information
+                self._telegram_bot.send_message(chat_id, 'Did not find an adequate post. Tired of searching...')
         else:
-            # if no appropriate post was found then send information
-            self._telegram_bot.send_message(chat_id, 'Did not find an adequate post. Tired of searching...')
+            self._logger.info('Error retrieving data for subreddit: ' + str(sub_reddit))
+            self._telegram_bot.send_message(chat_id, 'Check your subreddit.')
 
     def process_commands(self, test=False):
         """
