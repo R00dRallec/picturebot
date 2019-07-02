@@ -24,9 +24,11 @@
 	],
 	/* Triggers, when pictures shall automatically be sent */ 
 	"triggers":
-	{
+	[
 		"days": [0, 1, 2, 3, 4],
 		"hours": [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
 		"minutes": [0, 56]
-	}
+	],
+	/* Admin chat id for info messages */
+	"admin_id": 17
 }

@@ -9,6 +9,7 @@ import random
 import re
 import time
 import urllib.request
+import traceback
 
 import telepot
 
@@ -280,6 +281,10 @@ class Configuration:
         """Returns the trigger times from the config file."""
         return self.cfg.get('triggers', None)
 
+    def get_admin_id(self):
+        """Returns the admin id from the config file."""
+        return self.cfg.get('admin_id', None)
+
     @staticmethod
     def get_config(filename='config.json'):
         """Reads a json config, identified by filename."""
@@ -431,7 +436,7 @@ def main():
 
     if args.loop:
         trigger_executed = [42 for x in triggers]
-        while 1:
+        while True:
             picbot.process_commands(args.test)
             time.sleep(1)
             for idx, trigger in enumerate(triggers):
@@ -455,4 +460,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except Exception as e:
+            c = Configuration()
+            p = TelegramBot(c.get_bot_token())
+            admin_id = c.get_admin_id()
+            if admin_id is not None:
+                msg = 'Error occured, attempting to restart bot.\n' + str(traceback.format_exc())
+                p.send_message(admin_id, msg)
+            print(traceback.format_exc())
