@@ -470,4 +470,8 @@ if __name__ == '__main__':
             if admin_id is not None:
                 msg = 'Error occured, attempting to restart bot.\n' + str(traceback.format_exc())
                 p.send_message(admin_id, msg)
-            print(traceback.format_exc())
+            with open('trace.log', 'w') as file_handle:
+                file_handle.write(str(datetime.now()))
+                file_handle.write('\n')
+                file.write(str(traceback.format_exc()))
+                file_handle.write('\n')
