@@ -473,5 +473,5 @@ if __name__ == '__main__':
             with open('trace.log', 'w') as file_handle:
                 file_handle.write(str(datetime.now()))
                 file_handle.write('\n')
-                file.write(str(traceback.format_exc()))
+                file_handle.write(str(traceback.format_exc()))
                 file_handle.write('\n')
