@@ -225,12 +225,16 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
 
     def send_message(self, chat_id, msg, media=None, is_video=False):
         """Sends a message to the given group."""
-        if media is None:
-            self.bot.sendMessage(chat_id, msg)
-        elif is_video:
-            self.bot.sendVideo(chat_id, media, caption=msg)
-        else:
-            self.bot.sendPhoto(chat_id, media, caption=msg)
+        try:
+            if media is None:
+                self.bot.sendMessage(chat_id, msg)
+            elif is_video:
+                self.bot.sendVideo(chat_id, media, caption=msg)
+            else:
+                self.bot.sendPhoto(chat_id, media, caption=msg)
+        except telepot.exception.TelegramError as te:
+            self.logger.info('Caught exception ' + str(te))
+            self.bot.sendMessage(chat_id, 'Could not send picture.')
 
     def get_updates(self, update_id=None):
         """Returns all updates for the bot since the last update."""
