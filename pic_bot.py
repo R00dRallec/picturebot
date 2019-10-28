@@ -223,11 +223,11 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
         self.bot = telepot.Bot(token)
         self.logger = Logger.get_instance()
 
-    def send_message(self, chat_id, msg, media=None, is_video=False):
+    def send_message(self, chat_id, msg, media=None, is_video=False, disable_web_page_preview=False):
         """Sends a message to the given group."""
         try:
             if media is None:
-                self.bot.sendMessage(chat_id, msg)
+                self.bot.sendMessage(chat_id, msg, disable_web_page_preview=disable_web_page_preview)
             elif is_video:
                 self.bot.sendVideo(chat_id, media, caption=msg)
             else:
@@ -316,8 +316,12 @@ class Picturebot:
             [
                 {'command_string': 'MakeMeHappy',
                  'command_function': self._make_me_happy,
+                 'command_requires_admin': False},
+                {'command_string': 'source',
+                 'command_function': self._get_source,
                  'command_requires_admin': False}
             ]
+        self.last_post_id = None
 
     def send_picture(self, sub_reddit=None, test=False):
         """
@@ -347,12 +351,27 @@ class Picturebot:
                 # if an appropriate post was found then send it
                 msg = post['sub_reddit'] + ': ' + post['title']
                 self._telegram_bot.send_message(chat_id, msg, media=post['media_url'], is_video=post['is_video'])
+                self.last_post_id = post['post_id']
             else:
                 # if no appropriate post was found then send information
                 self._telegram_bot.send_message(chat_id, 'Did not find an adequate post. Tired of searching...')
         else:
             self._logger.info('Error retrieving data for subreddit: ' + str(sub_reddit))
             self._telegram_bot.send_message(chat_id, 'Check your subreddit.')
+
+    def get_source(self, parameter, test=False):
+        """
+        Provides the link of the last sent picture.
+        """
+
+        # select group id the message is sent to based on test flag
+        chat_id = self._cfg.get_chat_id(test)
+
+        # check if information about last sent post is available
+        if self.last_post_id is None:
+            self._telegram_bot.send_message(chat_id, 'No info about last post stored.')
+        else:
+            self._telegram_bot.send_message(chat_id, 'https://www.reddit.com/' + str(self.last_post_id), disable_web_page_preview=True)
 
     def process_commands(self, test=False):
         """
@@ -419,6 +438,9 @@ class Picturebot:
 
     def _make_me_happy(self, subreddit, test):
         self.send_picture(subreddit, test)
+
+    def _get_source(self, parameter, test):
+        self.get_source(parameter, test)
 
 def main():
     """Main function"""
