@@ -363,10 +363,11 @@ class Picturebot:
         """
         Provides the link of the last sent picture.
         """
-        # get link of last sent picture
 
         # select group id the message is sent to based on test flag
         chat_id = self._cfg.get_chat_id(test)
+
+        # check if information about last sent post is available
         if self.last_post_id is None:
             self._telegram_bot.send_message(chat_id, 'No info about last post stored.')
         else:
