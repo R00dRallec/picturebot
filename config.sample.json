@@ -30,5 +30,7 @@
 		"minutes": [0, 56]
 	],
 	/* Admin chat id for info messages */
-	"admin_id": 17
+	"admin_id": 17,
+	/* GodFather auto-generated command used in group chats */
+	"godfather_command": "/picbot@PicBotBot"
 }

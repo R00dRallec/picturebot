@@ -289,6 +289,10 @@ class Configuration:
         """Returns the admin id from the config file."""
         return self.cfg.get('admin_id', None)
 
+    def get_botfather_generated_command(self):
+        """Returns the string for BotFather generated commands for groups."""
+        return self.cfg.get('godfather_command', '')
+
     @staticmethod
     def get_config(filename='config.json'):
         """Reads a json config, identified by filename."""
@@ -406,12 +410,21 @@ class Picturebot:
                 if update['message']['text'].startswith(self._cfg.get_activation_prefix()):
                     # check if command is implemented
                     command_split = update['message']['text'].split(' ')
-                    command_name = command_split[1]
+
+                    # work around for auto-generated picbot command
+                    if len(command_split) == 1 and command_split[0] == self._cfg.get_botfather_generated_command():
+                        command_name = 'MakeMeHappy'
+                    else:
+                        command_name = command_split[1]
+
                     command_param = None
                     if len(command_split) == 3:
                         command_param = update['message']['text'].split(' ')[2]
-                    command = next((command for command in self._commands
-                                    if command['command_string'].lower() == command_name.lower()), None)
+                    if command_name is not None:
+                        command = next((command for command in self._commands
+                                        if command['command_string'].lower() == command_name.lower()), None)
+                    else:
+                        command = None
                     if command:
                         # check if admin privileges are needed
                         command_permissions = False
