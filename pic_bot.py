@@ -9,6 +9,7 @@ import random
 import re
 import time
 import urllib.request
+import socket 
 import traceback
 
 import telepot
@@ -235,16 +236,24 @@ class TelegramBot:  # pylint: disable=too-few-public-methods
         except telepot.exception.TelegramError as te:
             self.logger.info('Caught exception ' + str(te))
             self.bot.sendMessage(chat_id, 'Could not send picture.')
+        except socket.timeout as to:
+            self.logger.info('Caught exception ' + str(to))
+            self.bot.sendMessage(chat_id, 'Could not send picture.')
 
     def get_updates(self, update_id=None):
         """Returns all updates for the bot since the last update."""
         updates = []
-        if update_id != {}:
-            self.logger.info('Last update ID %d', update_id)
-            updates = self.bot.getUpdates(update_id)
-        else:
-            self.logger.info('No update ID found, retrieving all updates')
-            updates = self.bot.getUpdates()
+        try:
+            if update_id != {}:
+                self.logger.info('Last update ID %d', update_id)
+                updates = self.bot.getUpdates(update_id)
+            else:
+                self.logger.info('No update ID found, retrieving all updates')
+                updates = self.bot.getUpdates()
+        except socket.timeout as to:
+            self.logger.info('Caught exception ' + str(to))
+            self.logger.info('No updates.')
+            pass
 
         return updates
 
