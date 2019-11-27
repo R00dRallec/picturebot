@@ -414,7 +414,7 @@ class Picturebot:
                     # work around for auto-generated picbot command
                     if len(command_split) == 1 and command_split[0] == self._cfg.get_botfather_generated_command():
                         command_name = 'MakeMeHappy'
-                    else:
+                    elif len(command_split) > 1:
                         command_name = command_split[1]
 
                     command_param = None
